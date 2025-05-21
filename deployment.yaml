@@ -1,0 +1,251 @@
+# GCP Deployment Configuration for Django Microservices with Bulkhead Pattern
+# This configuration creates 5 VMs: bulkhead, escribir, lectura, escribir-db, lectura-db
+
+resources:
+  # Bulkhead Service VM
+  - name: bulkhead-vm
+    type: compute.v1.instance
+    properties:
+      zone: us-central1-a
+      machineType: zones/us-central1-a/machineTypes/n1-standard-2
+      disks:
+      - deviceName: boot
+        type: PERSISTENT
+        boot: true
+        autoDelete: true
+        initializeParams:
+          sourceImage: projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts
+          diskSizeGb: 20
+      networkInterfaces:
+      - network: global/networks/default
+        accessConfigs:
+        - name: External NAT
+          type: ONE_TO_ONE_NAT
+      tags:
+        items:
+        - http-server
+        - https-server
+        - bulkhead-service
+      metadata:
+        items:
+        - key: startup-script
+          value: |
+            #!/bin/bash
+            # Update system
+            apt-get update
+            apt-get install -y python3 python3-pip git docker.io docker-compose
+            
+            # Start Docker
+            systemctl start docker
+            systemctl enable docker
+            
+            # Clone repository
+            cd /opt
+            git clone https://github.com/danteboe/ExpMantenibilidad2.git
+            cd ExpMantenibilidad2
+            
+            # Set environment variables
+            export SERVICE_TYPE=bulkhead
+            export ESCRIBIR_SERVICE_URL=http://escribir-vm:8000
+            export LECTURA_SERVICE_URL=http://lectura-vm:8000
+            export ESCRIBIR_DB_URL=http://escribir-db-vm:8000
+            export LECTURA_DB_URL=http://lectura-db-vm:8000
+            export DEBUG=False
+            export SECRET_KEY=your-secret-key-here-change-in-production
+            
+            # Install Python dependencies
+            pip3 install -r requirements.txt
+            
+            # Run migrations
+            python3 manage.py migrate
+            
+            # Create superuser (optional)
+            echo "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'admin123')" | python3 manage.py shell
+            
+            # Start the service
+            nohup gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/bulkhead.log 2>&1 &
+
+  # Escribir Service VM  
+  - name: escribir-vm
+    type: compute.v1.instance
+    properties:
+      zone: us-central1-a
+      machineType: zones/us-central1-a/machineTypes/n1-standard-2
+      disks:
+      - deviceName: boot
+        type: PERSISTENT
+        boot: true
+        autoDelete: true
+        initializeParams:
+          sourceImage: projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts
+          diskSizeGb: 20
+      networkInterfaces:
+      - network: global/networks/default
+        accessConfigs:
+        - name: External NAT
+          type: ONE_TO_ONE_NAT
+      tags:
+        items:
+        - http-server
+        - escribir-service
+      metadata:
+        items:
+        - key: startup-script
+          value: |
+            #!/bin/bash
+            # Update system
+            apt-get update
+            apt-get install -y python3 python3-pip git
+            
+            # Clone repository
+            cd /opt
+            git clone https://github.com/danteboe/ExpMantenibilidad2.git
+            cd ExpMantenibilidad2
+            
+            # Set environment variables
+            export SERVICE_TYPE=escribir
+            export ESCRIBIR_DB_URL=http://escribir-db-vm:8000
+            export DEBUG=False
+            export SECRET_KEY=your-secret-key-here-change-in-production
+            
+            # Install Python dependencies
+            pip3 install -r requirements.txt
+            
+            # Run migrations
+            python3 manage.py migrate
+            
+            # Start the service
+            nohup gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/escribir.log 2>&1 &
+
+  # Lectura Service VM
+  - name: lectura-vm
+    type: compute.v1.instance
+    properties:
+      zone: us-central1-a
+      machineType: zones/us-central1-a/machineTypes/n1-standard-2
+      disks:
+      - deviceName: boot
+        type: PERSISTENT
+        boot: true
+        autoDelete: true
+        initializeParams:
+          sourceImage: projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts
+          diskSizeGb: 20
+      networkInterfaces:
+      - network: global/networks/default
+        accessConfigs:
+        - name: External NAT
+          type: ONE_TO_ONE_NAT
+      tags:
+        items:
+        - http-server
+        - lectura-service
+      metadata:
+        items:
+        - key: startup-script
+          value: |
+            #!/bin/bash
+            # Update system
+            apt-get update
+            apt-get install -y python3 python3-pip git
+            
+            # Clone repository
+            cd /opt
+            git clone https://github.com/danteboe/ExpMantenibilidad2.git
+            cd ExpMantenibilidad2
+            
+            # Set environment variables
+            export SERVICE_TYPE=lectura
+            export LECTURA_DB_URL=http://lectura-db-vm:8000
+            export DEBUG=False
+            export SECRET_KEY=your-secret-key-here-change-in-production
+            
+            # Install Python dependencies
+            pip3 install -r requirements.txt
+            
+            # Run migrations
+            python3 manage.py migrate
+            
+            # Start the service
+            nohup gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/lectura.log 2>&1 &
+
+  # Escribir Database VM
+  - name: escribir-db-vm
+    type: compute.v1.instance
+    properties:
+      zone: us-central1-a
+      machineType: zones/us-central1-a/machineTypes/n1-standard-2
+      disks:
+      - deviceName: boot
+        type: PERSISTENT
+        boot: true
+        autoDelete: true
+        initializeParams:
+          sourceImage: projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts
+          diskSizeGb: 50
+      networkInterfaces:
+      - network: global/networks/default
+        accessConfigs:
+        - name: External NAT
+          type: ONE_TO_ONE_NAT
+      tags:
+        items:
+        - database-service
+        - escribir-db
+      metadata:
+        items:
+        - key: startup-script
+          value: |
+            #!/bin/bash
+            # Update system
+            apt-get update
+            apt-get install -y python3 python3-pip git
+            
+            # Clone repository
+            cd /opt
+            git clone https://github.com/danteboe/ExpMantenibilidad2.git
+            cd ExpMantenibilidad2
+            
+            # Set environment variables
+            export SERVICE_TYPE=database
+            export DB_TYPE=write
+            export DB_NAME=escribir_database.sqlite3
+            export DEBUG=False
+            export SECRET_KEY=your-secret-key-here-change-in-production
+            
+            # Install Python dependencies
+            pip3 install -r requirements.txt
+            pip3 install faker  # For database population
+            
+            # Run migrations
+            python3 manage.py migrate
+            
+            # Populate database with 300 reports
+            python3 populate_db.py
+            
+            # Start the service
+            nohup gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/escribir-db.log 2>&1 &
+
+  # Lectura Database VM
+  - name: lectura-db-vm
+    type: compute.v1.instance
+    properties:
+      zone: us-central1-a
+      machineType: zones/us-central1-a/machineTypes/n1-standard-2
+      disks:
+      - deviceName: boot
+        type: PERSISTENT
+        boot: true
+        autoDelete: true
+        initializeParams:
+          sourceImage: projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts
+          diskSizeGb: 50
+      networkInterfaces:
+      - network: global/networks/default
+        accessConfigs:
+        - name: External NAT
+          type: ONE_TO_ONE_NAT
+      tags:
+        items:
+        - database-service
+        - lectura-
