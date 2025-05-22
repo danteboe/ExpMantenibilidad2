@@ -33,7 +33,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'urls'
+ROOT_URLCONF = 'ExpMantenibilidad2.urls'
 
 TEMPLATES = [
     {
@@ -51,7 +51,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'wsgi.application'
+WSGI_APPLICATION = 'ExpMantenibilidad2.wsgi.application'
 
 # Database configuration - dynamically set based on service type
 SERVICE_TYPE = os.environ.get('SERVICE_TYPE', 'bulkhead')
