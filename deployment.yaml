@@ -59,7 +59,7 @@ resources:
             python manage.py migrate
             
             # Start the service
-            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 exp_mantenibilidad_core.wsgi:application > /var/log/bulkhead.log 2>&1 &
+            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/bulkhead.log 2>&1 &
 
   # Escribir Service VM (4 CPU, 6 GB RAM)
   - name: escribir-vm
@@ -116,7 +116,7 @@ resources:
             python manage.py migrate
             
             # Start the service
-            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 exp_mantenibilidad_core.wsgi:application > /var/log/escribir.log 2>&1 &
+            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/escribir.log 2>&1 &
 
   # Lectura Service VM (4 CPU, 6 GB RAM)
   - name: lectura-vm
@@ -173,7 +173,7 @@ resources:
             python manage.py migrate
             
             # Start the service
-            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 exp_mantenibilidad_core.wsgi:application > /var/log/lectura.log 2>&1 &
+            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/lectura.log 2>&1 &
 
   # Escribir Database VM (4 CPU, 6 GB RAM)
   - name: escribir-db-vm
@@ -234,7 +234,7 @@ resources:
             python populate_db.py
             
             # Start the service
-            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 exp_mantenibilidad_core.wsgi:application > /var/log/escribir-db.log 2>&1 &
+            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/escribir-db.log 2>&1 &
 
   # Lectura Database VM (4 CPU, 6 GB RAM)
   - name: lectura-db-vm
@@ -295,7 +295,7 @@ resources:
             python populate_db.py
             
             # Start the service
-            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 exp_mantenibilidad_core.wsgi:application > /var/log/lectura-db.log 2>&1 &
+            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/lectura-db.log 2>&1 &
 
 # Firewall rules
   - name: allow-bulkhead-traffic
