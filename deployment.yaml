@@ -2,12 +2,12 @@
 # This configuration creates 5 VMs: bulkhead, escribir, lectura, escribir-db, lectura-db
 
 resources:
-  # Bulkhead Service VM
+  # Bulkhead Service VM (4 CPU, 6 GB RAM)
   - name: bulkhead-vm
     type: compute.v1.instance
     properties:
-      zone: us-central1-a
-      machineType: zones/us-central1-a/machineTypes/n1-standard-2
+      zone: us-west1-c
+      machineType: zones/us-west1-c/machineTypes/n1-standard-4
       disks:
       - deviceName: boot
         type: PERSISTENT
@@ -33,44 +33,40 @@ resources:
             #!/bin/bash
             # Update system
             apt-get update
-            apt-get install -y python3 python3-pip git docker.io docker-compose
-            
-            # Start Docker
-            systemctl start docker
-            systemctl enable docker
+            apt-get install -y python3 python3-pip git python3-venv
             
             # Clone repository
             cd /opt
             git clone https://github.com/danteboe/ExpMantenibilidad2.git
             cd ExpMantenibilidad2
             
+            # Create virtual environment
+            python3 -m venv venv
+            source venv/bin/activate
+            
             # Set environment variables
             export SERVICE_TYPE=bulkhead
-            export ESCRIBIR_SERVICE_URL=http://escribir-vm:8000
-            export LECTURA_SERVICE_URL=http://lectura-vm:8000
-            export ESCRIBIR_DB_URL=http://escribir-db-vm:8000
-            export LECTURA_DB_URL=http://lectura-db-vm:8000
+            export ESCRIBIR_SERVICE_URL=http://10.128.0.3:8000
+            export LECTURA_SERVICE_URL=http://10.128.0.4:8000
             export DEBUG=False
             export SECRET_KEY=your-secret-key-here-change-in-production
+            export PYTHONPATH=/opt/ExpMantenibilidad2
             
             # Install Python dependencies
-            pip3 install -r requirements.txt
+            pip install -r requirements.txt
             
             # Run migrations
-            python3 manage.py migrate
-            
-            # Create superuser (optional)
-            echo "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'admin123')" | python3 manage.py shell
+            python manage.py migrate
             
             # Start the service
-            nohup gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/bulkhead.log 2>&1 &
+            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/bulkhead.log 2>&1 &
 
-  # Escribir Service VM  
+  # Escribir Service VM (4 CPU, 6 GB RAM)
   - name: escribir-vm
     type: compute.v1.instance
     properties:
-      zone: us-central1-a
-      machineType: zones/us-central1-a/machineTypes/n1-standard-2
+      zone: us-west1-c
+      machineType: zones/us-west1-c/machineTypes/n1-standard-4
       disks:
       - deviceName: boot
         type: PERSISTENT
@@ -95,34 +91,39 @@ resources:
             #!/bin/bash
             # Update system
             apt-get update
-            apt-get install -y python3 python3-pip git
+            apt-get install -y python3 python3-pip git python3-venv
             
             # Clone repository
             cd /opt
             git clone https://github.com/danteboe/ExpMantenibilidad2.git
             cd ExpMantenibilidad2
             
+            # Create virtual environment
+            python3 -m venv venv
+            source venv/bin/activate
+            
             # Set environment variables
             export SERVICE_TYPE=escribir
-            export ESCRIBIR_DB_URL=http://escribir-db-vm:8000
+            export ESCRIBIR_DB_URL=http://10.128.0.5:8000
             export DEBUG=False
             export SECRET_KEY=your-secret-key-here-change-in-production
+            export PYTHONPATH=/opt/ExpMantenibilidad2
             
             # Install Python dependencies
-            pip3 install -r requirements.txt
+            pip install -r requirements.txt
             
             # Run migrations
-            python3 manage.py migrate
+            python manage.py migrate
             
             # Start the service
-            nohup gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/escribir.log 2>&1 &
+            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/escribir.log 2>&1 &
 
-  # Lectura Service VM
+  # Lectura Service VM (4 CPU, 6 GB RAM)
   - name: lectura-vm
     type: compute.v1.instance
     properties:
-      zone: us-central1-a
-      machineType: zones/us-central1-a/machineTypes/n1-standard-2
+      zone: us-west1-c
+      machineType: zones/us-west1-c/machineTypes/n1-standard-4
       disks:
       - deviceName: boot
         type: PERSISTENT
@@ -147,34 +148,39 @@ resources:
             #!/bin/bash
             # Update system
             apt-get update
-            apt-get install -y python3 python3-pip git
+            apt-get install -y python3 python3-pip git python3-venv
             
             # Clone repository
             cd /opt
             git clone https://github.com/danteboe/ExpMantenibilidad2.git
             cd ExpMantenibilidad2
             
+            # Create virtual environment
+            python3 -m venv venv
+            source venv/bin/activate
+            
             # Set environment variables
             export SERVICE_TYPE=lectura
-            export LECTURA_DB_URL=http://lectura-db-vm:8000
+            export LECTURA_DB_URL=http://10.128.0.6:8000
             export DEBUG=False
             export SECRET_KEY=your-secret-key-here-change-in-production
+            export PYTHONPATH=/opt/ExpMantenibilidad2
             
             # Install Python dependencies
-            pip3 install -r requirements.txt
+            pip install -r requirements.txt
             
             # Run migrations
-            python3 manage.py migrate
+            python manage.py migrate
             
             # Start the service
-            nohup gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/lectura.log 2>&1 &
+            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/lectura.log 2>&1 &
 
-  # Escribir Database VM
+  # Escribir Database VM (4 CPU, 6 GB RAM)
   - name: escribir-db-vm
     type: compute.v1.instance
     properties:
-      zone: us-central1-a
-      machineType: zones/us-central1-a/machineTypes/n1-standard-2
+      zone: us-west1-c
+      machineType: zones/us-west1-c/machineTypes/n1-standard-4
       disks:
       - deviceName: boot
         type: PERSISTENT
@@ -199,12 +205,16 @@ resources:
             #!/bin/bash
             # Update system
             apt-get update
-            apt-get install -y python3 python3-pip git
+            apt-get install -y python3 python3-pip git python3-venv
             
             # Clone repository
             cd /opt
             git clone https://github.com/danteboe/ExpMantenibilidad2.git
             cd ExpMantenibilidad2
+            
+            # Create virtual environment
+            python3 -m venv venv
+            source venv/bin/activate
             
             # Set environment variables
             export SERVICE_TYPE=database
@@ -212,26 +222,26 @@ resources:
             export DB_NAME=escribir_database.sqlite3
             export DEBUG=False
             export SECRET_KEY=your-secret-key-here-change-in-production
+            export PYTHONPATH=/opt/ExpMantenibilidad2
             
             # Install Python dependencies
-            pip3 install -r requirements.txt
-            pip3 install faker  # For database population
+            pip install -r requirements.txt
             
             # Run migrations
-            python3 manage.py migrate
+            python manage.py migrate
             
             # Populate database with 300 reports
-            python3 populate_db.py
+            python populate_db.py
             
             # Start the service
-            nohup gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/escribir-db.log 2>&1 &
+            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/escribir-db.log 2>&1 &
 
-  # Lectura Database VM
+  # Lectura Database VM (4 CPU, 6 GB RAM)
   - name: lectura-db-vm
     type: compute.v1.instance
     properties:
-      zone: us-central1-a
-      machineType: zones/us-central1-a/machineTypes/n1-standard-2
+      zone: us-west1-c
+      machineType: zones/us-west1-c/machineTypes/n1-standard-4
       disks:
       - deviceName: boot
         type: PERSISTENT
@@ -248,4 +258,62 @@ resources:
       tags:
         items:
         - database-service
-        - lectura-
+        - lectura-db
+      metadata:
+        items:
+        - key: startup-script
+          value: |
+            #!/bin/bash
+            # Update system
+            apt-get update
+            apt-get install -y python3 python3-pip git python3-venv
+            
+            # Clone repository
+            cd /opt
+            git clone https://github.com/danteboe/ExpMantenibilidad2.git
+            cd ExpMantenibilidad2
+            
+            # Create virtual environment
+            python3 -m venv venv
+            source venv/bin/activate
+            
+            # Set environment variables
+            export SERVICE_TYPE=database
+            export DB_TYPE=read
+            export DB_NAME=lectura_database.sqlite3
+            export DEBUG=False
+            export SECRET_KEY=your-secret-key-here-change-in-production
+            export PYTHONPATH=/opt/ExpMantenibilidad2
+            
+            # Install Python dependencies
+            pip install -r requirements.txt
+            
+            # Run migrations
+            python manage.py migrate
+            
+            # Populate database with 300 reports
+            python populate_db.py
+            
+            # Start the service
+            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:application > /var/log/lectura-db.log 2>&1 &
+
+# Firewall rules
+  - name: allow-bulkhead-traffic
+    type: compute.v1.firewall
+    properties:
+      network: global/networks/default
+      allowed:
+      - IPProtocol: TCP
+        ports: ["8000", "80", "443"]
+      sourceRanges: ["0.0.0.0/0"]
+      targetTags: ["bulkhead-service"]
+
+  - name: allow-internal-traffic
+    type: compute.v1.firewall
+    properties:
+      network: global/networks/default
+      allowed:
+      - IPProtocol: TCP
+        ports: ["8000"]
+      sourceRanges: ["10.128.0.0/20"]
+      targetTags: ["escribir-service", "lectura-service", "database-service"]

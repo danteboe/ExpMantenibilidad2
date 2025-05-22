@@ -3,201 +3,106 @@
 Script to populate the database with 300 random reports
 """
 import os
+import sys
 import django
-import random
 from datetime import datetime, timedelta
-from faker import Faker
+import random
 
-# Setup Django
+# Setup Django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'settings')
 django.setup()
 
 from database.models import Report
+from faker import Faker
 
 fake = Faker()
 
-# Predefined data for more realistic reports
-DEPARTMENTS = [
-    'Finance', 'Engineering', 'Marketing', 'Sales', 'Human Resources',
-    'Operations', 'Legal', 'Product Management', 'Quality Assurance',
-    'Customer Support', 'Research & Development', 'Business Development'
-]
-
+# Categories and priorities
 CATEGORIES = ['financial', 'technical', 'operational', 'strategic', 'compliance']
 PRIORITIES = ['low', 'medium', 'high', 'critical']
 STATUSES = ['draft', 'review', 'approved', 'published', 'archived']
-
-TAGS_POOL = [
-    'quarterly', 'annual', 'budget', 'forecast', 'analysis', 'performance',
-    'metrics', 'kpi', 'revenue', 'costs', 'productivity', 'efficiency',
-    'security', 'compliance', 'audit', 'risk', 'strategy', 'planning',
-    'development', 'improvement', 'innovation', 'market', 'customer',
-    'user', 'feedback', 'survey', 'research', 'data', 'insights',
-    'trends', 'technology', 'digital', 'automation', 'process'
+DEPARTMENTS = [
+    'Finance', 'Engineering', 'Operations', 'Marketing', 'Sales',
+    'Human Resources', 'Legal', 'IT', 'Research & Development', 'Quality Assurance'
 ]
 
-def generate_report_title(category, department):
-    """Generate a realistic report title based on category and department"""
-    title_patterns = {
-        'financial': [
-            f'{department} Financial Performance Report',
-            f'Q{random.randint(1,4)} Budget Analysis - {department}',
-            f'{department} Cost Optimization Report',
-            f'Revenue Forecast - {department}',
-            f'{department} ROI Analysis'
-        ],
-        'technical': [
-            f'{department} Technical Architecture Review',
-            f'System Performance Report - {department}',
-            f'{department} Infrastructure Assessment',
-            f'Security Analysis Report - {department}',
-            f'{department} Technology Stack Evaluation'
-        ],
-        'operational': [
-            f'{department} Operational Efficiency Report',
-            f'Process Improvement Analysis - {department}',
-            f'{department} Workflow Optimization',
-            f'Resource Utilization Report - {department}',
-            f'{department} Service Level Report'
-        ],
-        'strategic': [
-            f'{department} Strategic Planning Report',
-            f'Market Analysis - {department}',
-            f'{department} Competitive Intelligence',
-            f'Growth Strategy Report - {department}',
-            f'{department} Business Transformation Plan'
-        ],
-        'compliance': [
-            f'{department} Compliance Audit Report',
-            f'Regulatory Review - {department}',
-            f'{department} Risk Assessment',
-            f'Policy Compliance Report - {department}',
-            f'{department} Governance Review'
-        ]
-    }
-    
-    return random.choice(title_patterns[category])
+# Sample tags for reports
+TAGS = [
+    'urgent', 'quarterly', 'budget', 'security', 'performance',
+    'maintenance', 'compliance', 'strategic', 'customer', 'internal',
+    'external', 'review', 'analysis', 'forecast', 'audit'
+]
 
-def generate_report_description(category, title):
-    """Generate a detailed description based on the report category and title"""
-    descriptions = {
-        'financial': [
-            f"Comprehensive analysis of financial performance including revenue trends, cost structures, and profitability metrics. This report examines budget variance, cash flow projections, and provides recommendations for financial optimization.",
-            f"Detailed financial review covering key performance indicators, expense analysis, and revenue forecasting. The report includes comparative analysis with previous periods and industry benchmarks.",
-            f"In-depth financial assessment examining cost drivers, revenue opportunities, and budget allocation effectiveness. Includes recommendations for improving financial efficiency and ROI."
-        ],
-        'technical': [
-            f"Technical evaluation covering system architecture, performance metrics, and infrastructure capabilities. This report analyzes scalability, security, and maintenance requirements.",
-            f"Comprehensive technical review examining system performance, security vulnerabilities, and optimization opportunities. Includes recommendations for technology improvements and upgrades.",
-            f"Technical assessment covering infrastructure reliability, performance bottlenecks, and security posture. Provides actionable recommendations for system enhancement."
-        ],
-        'operational': [
-            f"Operational analysis examining process efficiency, resource utilization, and service delivery metrics. This report identifies bottlenecks and provides improvement recommendations.",
-            f"Comprehensive operational review covering workflow optimization, productivity metrics, and quality assurance. Includes best practices and process improvement strategies.",
-            f"Operational assessment focusing on efficiency gains, cost reduction opportunities, and service level improvements. Provides detailed action plans for implementation."
-        ],
-        'strategic': [
-            f"Strategic analysis examining market opportunities, competitive positioning, and growth strategies. This report provides recommendations for long-term business development.",
-            f"Comprehensive strategic review covering market trends, competitive analysis, and business model optimization. Includes strategic recommendations and implementation roadmap.",
-            f"Strategic assessment focusing on market expansion, competitive advantages, and strategic partnerships. Provides actionable insights for business growth."
-        ],
-        'compliance': [
-            f"Compliance review examining regulatory requirements, policy adherence, and risk mitigation strategies. This report identifies compliance gaps and provides remediation plans.",
-            f"Comprehensive compliance assessment covering regulatory compliance, internal controls, and audit findings. Includes corrective action plans and compliance improvement strategies.",
-            f"Compliance analysis focusing on regulatory requirements, policy compliance, and risk management. Provides detailed recommendations for compliance enhancement."
-        ]
-    }
-    
-    base_desc = random.choice(descriptions[category])
-    additional_context = f" Key findings include {fake.sentence()} The report also covers {fake.sentence()}"
-    
-    return base_desc + additional_context
+def generate_random_tags():
+    """Generate random tags for a report"""
+    num_tags = random.randint(1, 5)
+    return random.sample(TAGS, num_tags)
 
-def create_reports(count=300):
-    """Create the specified number of random reports"""
-    print(f"Creating {count} random reports...")
+def create_random_report():
+    """Create a random report"""
+    # Generate random due date (between now and 6 months from now)
+    due_date = fake.date_time_between(start_date='now', end_date='+6M')
     
-    reports_created = 0
+    # Generate tags
+    tags = generate_random_tags()
     
-    for i in range(count):
-        # Random selections
-        category = random.choice(CATEGORIES)
-        department = random.choice(DEPARTMENTS)
-        priority = random.choice(PRIORITIES)
-        status = random.choice(STATUSES)
-        
-        # Generate realistic title and description
-        title = generate_report_title(category, department)
-        description = generate_report_description(category, title)
-        
-        # Random author name
-        author = fake.name()
-        
-        # Random dates
-        created_date = fake.date_time_between(start_date='-2y', end_date='now')
-        
-        # Due date (some reports might not have one)
-        due_date = None
-        if random.random() > 0.3:  # 70% chance of having a due date
-            due_date = fake.date_time_between(start_date=created_date, end_date='+6M')
-        
-        # Random tags
-        num_tags = random.randint(2, 5)
-        tags = random.sample(TAGS_POOL, num_tags)
-        tags_str = ', '.join(tags)
-        
-        try:
-            # Create the report
-            report = Report.objects.create(
-                title=title,
-                description=description,
-                author=author,
-                department=department,
-                category=category,
-                priority=priority,
-                status=status,
-                created_at=created_date,
-                due_date=due_date,
-                tags=tags_str
-            )
-            
-            reports_created += 1
-            
-            if reports_created % 50 == 0:
-                print(f"Created {reports_created} reports...")
-                
-        except Exception as e:
-            print(f"Error creating report {i+1}: {e}")
+    report = Report.objects.create(
+        title=fake.catch_phrase() + " Report",
+        description=fake.text(max_nb_chars=500),
+        author=fake.name(),
+        department=random.choice(DEPARTMENTS),
+        category=random.choice(CATEGORIES),
+        priority=random.choice(PRIORITIES),
+        status=random.choice(STATUSES),
+        due_date=due_date,
+        tags=', '.join(tags)
+    )
     
-    print(f"Successfully created {reports_created} reports!")
-    return reports_created
+    return report
 
-def main():
-    """Main function to populate the database"""
+def populate_database():
+    """Populate database with 300 random reports"""
     print("Starting database population...")
     
-    # Check if reports already exist
-    existing_count = Report.objects.count()
-    if existing_count > 0:
-        response = input(f"Database already contains {existing_count} reports. Do you want to add more? (y/n): ")
-        if response.lower() != 'y':
-            print("Aborted.")
-            return
+    # Clear existing reports
+    Report.objects.all().delete()
+    print("Cleared existing reports")
     
-    # Create reports
-    created_count = create_reports(300)
+    # Create 300 random reports
+    reports_created = 0
+    for i in range(300):
+        try:
+            report = create_random_report()
+            reports_created += 1
+            
+            if (i + 1) % 50 == 0:
+                print(f"Created {i + 1} reports...")
+                
+        except Exception as e:
+            print(f"Error creating report {i + 1}: {e}")
+            continue
     
-    # Print summary
-    total_count = Report.objects.count()
-    print(f"\nDatabase population complete!")
-    print(f"Total reports in database: {total_count}")
-    print(f"Reports created in this run: {created_count}")
+    print(f"Successfully created {reports_created} reports")
     
     # Print some statistics
-    print(f"\nStatistics:")
-    for category in CATEGORIES:
+    print("\nDatabase Statistics:")
+    print(f"Total reports: {Report.objects.count()}")
+    
+    print("\nBy Category:")
+    for category, _ in Report._meta.get_field('category').choices:
         count = Report.objects.filter(category=category).count()
-        print(f"  {category.title()}: {count} reports")
+        print(f"  {category.title()}: {count}")
+    
+    print("\nBy Priority:")
+    for priority, _ in Report._meta.get_field('priority').choices:
+        count = Report.objects.filter(priority=priority).count()
+        print(f"  {priority.title()}: {count}")
+    
+    print("\nBy Status:")
+    for status, _ in Report._meta.get_field('status').choices:
+        count = Report.objects.filter(status=status).count()
+        print(f"  {status.title()}: {count}")
 
 if __name__ == '__main__':
-    main()
+    populate_database()
+    print("Database population completed!")
