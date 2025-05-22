@@ -1,14 +1,19 @@
+# ExpMantenibilidad2/settings.py
 import os
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-default-key-change-in-production')
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-change-me-in-production')
 
-DEBUG = os.environ.get('DEBUG', 'True').lower() == 'true'
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['*']  # Configure appropriately for production
 
+# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -16,11 +21,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
     'bulkhead',
     'database',
-    'escribir',
-    'lectura',
 ]
 
 MIDDLEWARE = [
@@ -53,31 +55,35 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'ExpMantenibilidad2.wsgi.application'
 
-# Database configuration - dynamically set based on service type
-SERVICE_TYPE = os.environ.get('SERVICE_TYPE', 'bulkhead')
+# Database configuration
+SERVER_TYPE = os.environ.get('SERVER_TYPE', 'bulkhead')
 
-if SERVICE_TYPE == 'database':
-    DB_NAME = os.environ.get('DB_NAME', 'database.sqlite3')
-elif SERVICE_TYPE == 'escribir':
-    DB_NAME = 'escribir.sqlite3'
-elif SERVICE_TYPE == 'lectura':
-    DB_NAME = 'lectura.sqlite3'
-else:
-    DB_NAME = 'bulkhead.sqlite3'
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / DB_NAME,
+if SERVER_TYPE == 'write':
+    # Write server uses SQLite for WriteData
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'write_db.sqlite3',
+        }
     }
-}
+elif SERVER_TYPE == 'read':
+    # Read server uses SQLite for ReadData
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'read_db.sqlite3',
+        }
+    }
+else:
+    # Bulkhead server uses SQLite for ServiceStatus
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'bulkhead_db.sqlite3',
+        }
+    }
 
-# External service URLs
-ESCRIBIR_SERVICE_URL = os.environ.get('ESCRIBIR_SERVICE_URL', 'http://escribir-vm:8000')
-LECTURA_SERVICE_URL = os.environ.get('LECTURA_SERVICE_URL', 'http://lectura-vm:8000')
-ESCRIBIR_DB_URL = os.environ.get('ESCRIBIR_DB_URL', 'http://escribir-db-vm:8000')
-LECTURA_DB_URL = os.environ.get('LECTURA_DB_URL', 'http://lectura-db-vm:8000')
-
+# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -93,21 +99,42 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# Internationalization
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
+# Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+# Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-REST_FRAMEWORK = {
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
-    ],
-    'DEFAULT_PARSER_CLASSES': [
-        'rest_framework.parsers.JSONParser',
-    ],
+# CORS settings (if needed)
+CORS_ALLOW_ALL_ORIGINS = True  # Configure appropriately for production
+
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'django.log',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
 }

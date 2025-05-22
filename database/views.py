@@ -1,149 +1,116 @@
-from rest_framework import viewsets, status
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework.pagination import PageNumberPagination
-from django.shortcuts import get_object_or_404
-from django.db.models import Q
-from .models import Report
-from .serializers import ReportSerializer
+# database/views.py
 import os
-import logging
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.core.paginator import Paginator
+from .models import WriteData, ReadData
+import json
 
-logger = logging.getLogger(__name__)
+# Get server type from environment variable
+SERVER_TYPE = os.environ.get('SERVER_TYPE', 'both')  # 'write', 'read', or 'both'
 
-# Determine if this is a read-only or write-only database
-DB_TYPE = os.environ.get('DB_TYPE', 'write')  # 'read' or 'write'
-
-class ReportPagination(PageNumberPagination):
-    page_size = 20
-    page_size_query_param = 'page_size'
-    max_page_size = 100
-
-class ReportViewSet(viewsets.ModelViewSet):
-    queryset = Report.objects.all()
-    serializer_class = ReportSerializer
-    pagination_class = ReportPagination
+@csrf_exempt
+@require_http_methods(["POST"])
+def write_data(request):
+    """Handle write operations - only available on write servers"""
+    if SERVER_TYPE not in ['write', 'both']:
+        return JsonResponse({
+            'error': 'Write operations not available on this server',
+            'server_type': SERVER_TYPE
+        }, status=403)
     
-    def get_queryset(self):
-        queryset = Report.objects.all()
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '')
+        content = data.get('content', '')
         
-        # Filter by query parameters
-        title = self.request.query_params.get('title', None)
-        author = self.request.query_params.get('author', None)
-        category = self.request.query_params.get('category', None)
-        status_filter = self.request.query_params.get('status', None)
-        priority = self.request.query_params.get('priority', None)
-        department = self.request.query_params.get('department', None)
+        if not title:
+            return JsonResponse({'error': 'Title is required'}, status=400)
         
-        if title:
-            queryset = queryset.filter(title__icontains=title)
-        if author:
-            queryset = queryset.filter(author__icontains=author)
-        if category:
-            queryset = queryset.filter(category=category)
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
-        if priority:
-            queryset = queryset.filter(priority=priority)
-        if department:
-            queryset = queryset.filter(department__icontains=department)
-            
-        return queryset.order_by('-created_at')
-    
-    def create(self, request, *args, **kwargs):
-        if DB_TYPE == 'read':
-            return Response({
-                'error': 'This database is read-only'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        return super().create(request, *args, **kwargs)
-    
-    def update(self, request, *args, **kwargs):
-        if DB_TYPE == 'read':
-            return Response({
-                'error': 'This database is read-only'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        return super().update(request, *args, **kwargs)
-    
-    def partial_update(self, request, *args, **kwargs):
-        if DB_TYPE == 'read':
-            return Response({
-                'error': 'This database is read-only'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        return super().partial_update(request, *args, **kwargs)
-    
-    def destroy(self, request, *args, **kwargs):
-        if DB_TYPE == 'read':
-            return Response({
-                'error': 'This database is read-only'
-            }, status=status.HTTP_403_FORBIDDEN)
-        
-        return super().destroy(request, *args, **kwargs)
-
-@api_view(['GET'])
-def report_search(request):
-    """Advanced search endpoint"""
-    if DB_TYPE == 'write':
-        return Response({
-            'error': 'This database is write-only'
-        }, status=status.HTTP_403_FORBIDDEN)
-    
-    search_term = request.GET.get('q', '')
-    reports = Report.objects.all()
-    
-    if search_term:
-        reports = reports.filter(
-            Q(title__icontains=search_term) |
-            Q(description__icontains=search_term) |
-            Q(author__icontains=search_term) |
-            Q(tags__icontains=search_term)
+        # Create new record
+        write_record = WriteData.objects.create(
+            title=title,
+            content=content
         )
-    
-    serializer = ReportSerializer(reports, many=True)
-    return Response(serializer.data)
+        
+        return JsonResponse({
+            'id': write_record.id,
+            'title': write_record.title,
+            'content': write_record.content,
+            'created_at': write_record.created_at.isoformat(),
+            'message': 'Data written successfully'
+        }, status=201)
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
-@api_view(['GET'])
-def report_stats(request):
-    """Get database statistics"""
-    if DB_TYPE == 'write':
-        return Response({
-            'error': 'This database is write-only'
-        }, status=status.HTTP_403_FORBIDDEN)
+@require_http_methods(["GET"])
+def read_data(request):
+    """Handle read operations - only available on read servers"""
+    if SERVER_TYPE not in ['read', 'both']:
+        return JsonResponse({
+            'error': 'Read operations not available on this server',
+            'server_type': SERVER_TYPE
+        }, status=403)
     
-    total_reports = Report.objects.count()
-    
-    stats = {
-        'total_reports': total_reports,
-        'by_category': {},
-        'by_status': {},
-        'by_priority': {},
-    }
-    
-    # Group by category
-    for category, _ in Report._meta.get_field('category').choices:
-        count = Report.objects.filter(category=category).count()
-        stats['by_category'][category] = count
-    
-    # Group by status
-    for status_choice, _ in Report._meta.get_field('status').choices:
-        count = Report.objects.filter(status=status_choice).count()
-        stats['by_status'][status_choice] = count
-    
-    # Group by priority
-    for priority, _ in Report._meta.get_field('priority').choices:
-        count = Report.objects.filter(priority=priority).count()
-        stats['by_priority'][priority] = count
-    
-    return Response(stats)
+    try:
+        # Get query parameters
+        record_id = request.GET.get('id')
+        page = request.GET.get('page', 1)
+        page_size = request.GET.get('page_size', 10)
+        
+        # If specific ID requested
+        if record_id:
+            try:
+                record = ReadData.objects.get(id=record_id)
+                return JsonResponse({
+                    'id': record.id,
+                    'title': record.title,
+                    'content': record.content,
+                    'created_at': record.created_at.isoformat(),
+                    'updated_at': record.updated_at.isoformat()
+                })
+            except ReadData.DoesNotExist:
+                return JsonResponse({'error': 'Record not found'}, status=404)
+        
+        # Get all records with pagination
+        all_records = ReadData.objects.all()
+        paginator = Paginator(all_records, page_size)
+        
+        try:
+            records = paginator.page(page)
+        except:
+            return JsonResponse({'error': 'Invalid page number'}, status=400)
+        
+        # Serialize records
+        data = [{
+            'id': record.id,
+            'title': record.title,
+            'content': record.content,
+            'created_at': record.created_at.isoformat(),
+            'updated_at': record.updated_at.isoformat()
+        } for record in records]
+        
+        return JsonResponse({
+            'data': data,
+            'pagination': {
+                'current_page': records.number,
+                'total_pages': paginator.num_pages,
+                'total_records': paginator.count,
+                'has_next': records.has_next(),
+                'has_previous': records.has_previous()
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
-@api_view(['GET'])
 def health_check(request):
     """Health check endpoint"""
-    return Response({
+    return JsonResponse({
         'status': 'healthy',
-        'service': 'database',
-        'db_type': DB_TYPE,
-        'total_reports': Report.objects.count()
+        'server_type': SERVER_TYPE
     })

@@ -1,13 +1,9 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+# database/urls.py
+from django.urls import path
 from . import views
 
-router = DefaultRouter()
-router.register(r'reports', views.ReportViewSet)
-
 urlpatterns = [
-    path('', include(router.urls)),
-    path('search/', views.report_search, name='report_search'),
-    path('stats/', views.report_stats, name='report_stats'),
+    path('write/', views.write_data, name='write_data'),
+    path('read/', views.read_data, name='read_data'),
     path('health/', views.health_check, name='health_check'),
 ]

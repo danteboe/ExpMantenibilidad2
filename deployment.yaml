@@ -1,319 +1,183 @@
-# GCP Deployment Configuration for Django Microservices with Bulkhead Pattern
-# This configuration creates 5 VMs: bulkhead, escribir, lectura, escribir-db, lectura-db
+# deployment.yaml
+apiVersion: compute/v1
+kind: Instance
+metadata:
+  name: bulkhead-vm
+spec:
+  machineType: zones/us-central1-a/machineTypes/e2-standard-4  # 4 CPU, 16 GB RAM
+  disks:
+  - boot: true
+    autoDelete: true
+    initializeParams:
+      sourceImage: projects/debian-cloud/global/images/family/debian-11
+      diskSizeGb: 20
+  networkInterfaces:
+  - network: global/networks/default
+    accessConfigs:
+    - type: ONE_TO_ONE_NAT
+      name: External NAT
+  metadata:
+    items:
+    - key: startup-script
+      value: |
+        #!/bin/bash
+        apt-get update
+        apt-get install -y python3 python3-pip git
+        
+        # Clone repository
+        cd /opt
+        git clone https://github.com/danteboe/ExpMantenibilidad2.git
+        cd ExpMantenibilidad2
+        
+        # Install dependencies
+        pip3 install -r requirements.txt
+        
+        # Set environment variables
+        export SERVER_TYPE=bulkhead
+        export DJANGO_SECRET_KEY="your-secret-key-here"
+        export DEBUG=False
+        
+        # Get internal IPs of database instances (you'll need to update these)
+        export WRITE_DB_IP="10.128.0.3:8000"  # Update with actual write DB internal IP
+        export READ_DB_IP="10.128.0.4:8000"   # Update with actual read DB internal IP
+        
+        # Run migrations and populate database
+        python3 manage.py makemigrations
+        python3 manage.py migrate
+        python3 populate_db.py
+        
+        # Start the application
+        python3 manage.py runserver 0.0.0.0:8000
+  tags:
+    items:
+    - bulkhead-server
+  serviceAccounts:
+  - email: default
+    scopes:
+    - https://www.googleapis.com/auth/cloud-platform
 
-resources:
-  # Bulkhead Service VM (4 CPU, 6 GB RAM)
-  - name: bulkhead-vm
-    type: compute.v1.instance
-    properties:
-      zone: us-west1-c
-      machineType: zones/us-west1-c/machineTypes/n1-standard-4
-      disks:
-      - deviceName: boot
-        type: PERSISTENT
-        boot: true
-        autoDelete: true
-        initializeParams:
-          sourceImage: projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts
-          diskSizeGb: 20
-      networkInterfaces:
-      - network: global/networks/default
-        accessConfigs:
-        - name: External NAT
-          type: ONE_TO_ONE_NAT
-      tags:
-        items:
-        - http-server
-        - https-server
-        - bulkhead-service
-      metadata:
-        items:
-        - key: startup-script
-          value: |
-            #!/bin/bash
-            # Update system
-            apt-get update
-            apt-get install -y python3 python3-pip git python3-venv
-            
-            # Clone repository
-            cd /opt
-            git clone https://github.com/danteboe/ExpMantenibilidad2.git
-            cd ExpMantenibilidad2
-            
-            # Create virtual environment
-            python3 -m venv venv
-            source venv/bin/activate
-            
-            # Set environment variables
-            export SERVICE_TYPE=bulkhead
-            export ESCRIBIR_SERVICE_URL=http://10.128.0.3:8000
-            export LECTURA_SERVICE_URL=http://10.128.0.4:8000
-            export DEBUG=False
-            export SECRET_KEY=your-secret-key-here-change-in-production
-            export PYTHONPATH=/opt/ExpMantenibilidad2
-            
-            # Install Python dependencies
-            pip install -r requirements.txt
-            
-            # Run migrations
-            python manage.py migrate
-            
-            # Start the service
-            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 ExpMantenibilidad2.wsgi:application > /var/log/bulkhead.log 2>&1 &
+---
+apiVersion: compute/v1
+kind: Instance
+metadata:
+  name: escribir-vm
+spec:
+  machineType: zones/us-central1-a/machineTypes/e2-standard-4  # 4 CPU, 16 GB RAM
+  disks:
+  - boot: true
+    autoDelete: true
+    initializeParams:
+      sourceImage: projects/debian-cloud/global/images/family/debian-11
+      diskSizeGb: 20
+  networkInterfaces:
+  - network: global/networks/default
+    accessConfigs:
+    - type: ONE_TO_ONE_NAT
+      name: External NAT
+  metadata:
+    items:
+    - key: startup-script
+      value: |
+        #!/bin/bash
+        apt-get update
+        apt-get install -y python3 python3-pip git
+        
+        # Clone repository
+        cd /opt
+        git clone https://github.com/danteboe/ExpMantenibilidad2.git
+        cd ExpMantenibilidad2
+        
+        # Install dependencies
+        pip3 install -r requirements.txt
+        
+        # Set environment variables
+        export SERVER_TYPE=write
+        export DJANGO_SECRET_KEY="your-secret-key-here"
+        export DEBUG=False
+        
+        # Run migrations and populate database
+        python3 manage.py makemigrations
+        python3 manage.py migrate
+        python3 populate_db.py
+        
+        # Start the application
+        python3 manage.py runserver 0.0.0.0:8000
+  tags:
+    items:
+    - write-db-server
+  serviceAccounts:
+  - email: default
+    scopes:
+    - https://www.googleapis.com/auth/cloud-platform
 
-  # Escribir Service VM (4 CPU, 6 GB RAM)
-  - name: escribir-vm
-    type: compute.v1.instance
-    properties:
-      zone: us-west1-c
-      machineType: zones/us-west1-c/machineTypes/n1-standard-4
-      disks:
-      - deviceName: boot
-        type: PERSISTENT
-        boot: true
-        autoDelete: true
-        initializeParams:
-          sourceImage: projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts
-          diskSizeGb: 20
-      networkInterfaces:
-      - network: global/networks/default
-        accessConfigs:
-        - name: External NAT
-          type: ONE_TO_ONE_NAT
-      tags:
-        items:
-        - http-server
-        - escribir-service
-      metadata:
-        items:
-        - key: startup-script
-          value: |
-            #!/bin/bash
-            # Update system
-            apt-get update
-            apt-get install -y python3 python3-pip git python3-venv
-            
-            # Clone repository
-            cd /opt
-            git clone https://github.com/danteboe/ExpMantenibilidad2.git
-            cd ExpMantenibilidad2
-            
-            # Create virtual environment
-            python3 -m venv venv
-            source venv/bin/activate
-            
-            # Set environment variables
-            export SERVICE_TYPE=escribir
-            export ESCRIBIR_DB_URL=http://10.128.0.5:8000
-            export DEBUG=False
-            export SECRET_KEY=your-secret-key-here-change-in-production
-            export PYTHONPATH=/opt/ExpMantenibilidad2
-            
-            # Install Python dependencies
-            pip install -r requirements.txt
-            
-            # Run migrations
-            python manage.py migrate
-            
-            # Start the service
-            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 ExpMantenibilidad2.wsgi:application > /var/log/escribir.log 2>&1 &
+---
+apiVersion: compute/v1
+kind: Instance
+metadata:
+  name: lectura-vm
+spec:
+  machineType: zones/us-central1-a/machineTypes/e2-standard-4  # 4 CPU, 16 GB RAM
+  disks:
+  - boot: true
+    autoDelete: true
+    initializeParams:
+      sourceImage: projects/debian-cloud/global/images/family/debian-11
+      diskSizeGb: 20
+  networkInterfaces:
+  - network: global/networks/default
+    accessConfigs:
+    - type: ONE_TO_ONE_NAT
+      name: External NAT
+  metadata:
+    items:
+    - key: startup-script
+      value: |
+        #!/bin/bash
+        apt-get update
+        apt-get install -y python3 python3-pip git
+        
+        # Clone repository
+        cd /opt
+        git clone https://github.com/danteboe/ExpMantenibilidad2.git
+        cd ExpMantenibilidad2
+        
+        # Install dependencies
+        pip3 install -r requirements.txt
+        
+        # Set environment variables
+        export SERVER_TYPE=read
+        export DJANGO_SECRET_KEY="your-secret-key-here"
+        export DEBUG=False
+        
+        # Run migrations and populate database
+        python3 manage.py makemigrations
+        python3 manage.py migrate
+        python3 populate_db.py
+        
+        # Start the application
+        python3 manage.py runserver 0.0.0.0:8000
+  tags:
+    items:
+    - read-db-server
+  serviceAccounts:
+  - email: default
+    scopes:
+    - https://www.googleapis.com/auth/cloud-platform
 
-  # Lectura Service VM (4 CPU, 6 GB RAM)
-  - name: lectura-vm
-    type: compute.v1.instance
-    properties:
-      zone: us-west1-c
-      machineType: zones/us-west1-c/machineTypes/n1-standard-4
-      disks:
-      - deviceName: boot
-        type: PERSISTENT
-        boot: true
-        autoDelete: true
-        initializeParams:
-          sourceImage: projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts
-          diskSizeGb: 20
-      networkInterfaces:
-      - network: global/networks/default
-        accessConfigs:
-        - name: External NAT
-          type: ONE_TO_ONE_NAT
-      tags:
-        items:
-        - http-server
-        - lectura-service
-      metadata:
-        items:
-        - key: startup-script
-          value: |
-            #!/bin/bash
-            # Update system
-            apt-get update
-            apt-get install -y python3 python3-pip git python3-venv
-            
-            # Clone repository
-            cd /opt
-            git clone https://github.com/danteboe/ExpMantenibilidad2.git
-            cd ExpMantenibilidad2
-            
-            # Create virtual environment
-            python3 -m venv venv
-            source venv/bin/activate
-            
-            # Set environment variables
-            export SERVICE_TYPE=lectura
-            export LECTURA_DB_URL=http://10.128.0.6:8000
-            export DEBUG=False
-            export SECRET_KEY=your-secret-key-here-change-in-production
-            export PYTHONPATH=/opt/ExpMantenibilidad2
-            
-            # Install Python dependencies
-            pip install -r requirements.txt
-            
-            # Run migrations
-            python manage.py migrate
-            
-            # Start the service
-            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 ExpMantenibilidad2.wsgi:application > /var/log/lectura.log 2>&1 &
-
-  # Escribir Database VM (4 CPU, 6 GB RAM)
-  - name: escribir-db-vm
-    type: compute.v1.instance
-    properties:
-      zone: us-west1-c
-      machineType: zones/us-west1-c/machineTypes/n1-standard-4
-      disks:
-      - deviceName: boot
-        type: PERSISTENT
-        boot: true
-        autoDelete: true
-        initializeParams:
-          sourceImage: projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts
-          diskSizeGb: 50
-      networkInterfaces:
-      - network: global/networks/default
-        accessConfigs:
-        - name: External NAT
-          type: ONE_TO_ONE_NAT
-      tags:
-        items:
-        - database-service
-        - escribir-db
-      metadata:
-        items:
-        - key: startup-script
-          value: |
-            #!/bin/bash
-            # Update system
-            apt-get update
-            apt-get install -y python3 python3-pip git python3-venv
-            
-            # Clone repository
-            cd /opt
-            git clone https://github.com/danteboe/ExpMantenibilidad2.git
-            cd ExpMantenibilidad2
-            
-            # Create virtual environment
-            python3 -m venv venv
-            source venv/bin/activate
-            
-            # Set environment variables
-            export SERVICE_TYPE=database
-            export DB_TYPE=write
-            export DB_NAME=escribir_database.sqlite3
-            export DEBUG=False
-            export SECRET_KEY=your-secret-key-here-change-in-production
-            export PYTHONPATH=/opt/ExpMantenibilidad2
-            
-            # Install Python dependencies
-            pip install -r requirements.txt
-            
-            # Run migrations
-            python manage.py migrate
-            
-            # Populate database with 300 reports
-            python populate_db.py
-            
-            # Start the service
-            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 ExpMantenibilidad2.wsgi:application > /var/log/escribir-db.log 2>&1 &
-
-  # Lectura Database VM (4 CPU, 6 GB RAM)
-  - name: lectura-db-vm
-    type: compute.v1.instance
-    properties:
-      zone: us-west1-c
-      machineType: zones/us-west1-c/machineTypes/n1-standard-4
-      disks:
-      - deviceName: boot
-        type: PERSISTENT
-        boot: true
-        autoDelete: true
-        initializeParams:
-          sourceImage: projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts
-          diskSizeGb: 50
-      networkInterfaces:
-      - network: global/networks/default
-        accessConfigs:
-        - name: External NAT
-          type: ONE_TO_ONE_NAT
-      tags:
-        items:
-        - database-service
-        - lectura-db
-      metadata:
-        items:
-        - key: startup-script
-          value: |
-            #!/bin/bash
-            # Update system
-            apt-get update
-            apt-get install -y python3 python3-pip git python3-venv
-            
-            # Clone repository
-            cd /opt
-            git clone https://github.com/danteboe/ExpMantenibilidad2.git
-            cd ExpMantenibilidad2
-            
-            # Create virtual environment
-            python3 -m venv venv
-            source venv/bin/activate
-            
-            # Set environment variables
-            export SERVICE_TYPE=database
-            export DB_TYPE=read
-            export DB_NAME=lectura_database.sqlite3
-            export DEBUG=False
-            export SECRET_KEY=your-secret-key-here-change-in-production
-            export PYTHONPATH=/opt/ExpMantenibilidad2
-            
-            # Install Python dependencies
-            pip install -r requirements.txt
-            
-            # Run migrations
-            python manage.py migrate
-            
-            # Populate database with 300 reports
-            python populate_db.py
-            
-            # Start the service
-            nohup python -m gunicorn --bind 0.0.0.0:8000 --workers 4 ExpMantenibilidad2.wsgi:application > /var/log/lectura-db.log 2>&1 &
-
-# Firewall rules
-  - name: allow-bulkhead-traffic
-    type: compute.v1.firewall
-    properties:
-      network: global/networks/default
-      allowed:
-      - IPProtocol: TCP
-        ports: ["8000", "80", "443"]
-      sourceRanges: ["0.0.0.0/0"]
-      targetTags: ["bulkhead-service"]
-
-  - name: allow-internal-traffic
-    type: compute.v1.firewall
-    properties:
-      network: global/networks/default
-      allowed:
-      - IPProtocol: TCP
-        ports: ["8000"]
-      sourceRanges: ["10.128.0.0/20"]
-      targetTags: ["escribir-service", "lectura-service", "database-service"]
+---
+apiVersion: compute/v1
+kind: Firewall
+metadata:
+  name: allow-django-app
+spec:
+  allowed:
+  - IPProtocol: TCP
+    ports:
+    - "8000"
+  direction: INGRESS
+  sourceRanges:
+  - 0.0.0.0/0
+  targetTags:
+  - bulkhead-server
+  - write-db-server
+  - read-db-server
