@@ -2,7 +2,7 @@
 
 A Django-based microservices project for demonstrating bulkhead, read, and write database patterns in a medical data context.
 
-It developed this as part of the course "ISIS2503- Arquitectura y diseño de software" (Software architecture and design) at Universidad de los Andes.
+I developed this as part of the course "ISIS2503- Arquitectura y diseño de software" (Software architecture and design) at Universidad de los Andes.
 
 A video (in Spanish) showcasing the project can b e watched through this link: https://youtu.be/RImE-6kuCwk
 
