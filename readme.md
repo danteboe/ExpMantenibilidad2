@@ -81,32 +81,10 @@ This setup supports reproducible deployments, modular development, and fault-iso
 
 ---
 
-## 🧪 Local Testing (Optional)
-
-While the system was designed for a cloud environment, it can also be run locally:
-
-```bash
-pip install -r requirements.txt
-export SERVER_TYPE=write  # or read / bulkhead
-python manage.py migrate
-python populate_db.py
-python manage.py runserver
-```
-
----
-
 ## 📦 Models
 
 * `WriteData` / `ReadData`: Distinct models for logical data separation
 * `ServiceStatus`: Runtime service toggling metadata for bulkhead control
-
----
-
-## 🧪 Tests
-
-```bash
-python manage.py test
-```
 
 ---
 
