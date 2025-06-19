@@ -1,7 +1,3 @@
-Here’s a **reconciled, polished, and professional README** that subtly showcases your architectural and cloud deployment skills without being heavy-handed about the learning outcomes. It emphasizes your technical fluency while staying portfolio-friendly and clean for potential employers:
-
----
-
 # ExpMantenibilidad2
 
 **A Django-based microservices system implementing bulkhead isolation and read/write separation, deployed on Google Cloud Platform.**
