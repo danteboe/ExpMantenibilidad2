@@ -1,102 +1,123 @@
+Here’s a **reconciled, polished, and professional README** that subtly showcases your architectural and cloud deployment skills without being heavy-handed about the learning outcomes. It emphasizes your technical fluency while staying portfolio-friendly and clean for potential employers:
+
+---
+
 # ExpMantenibilidad2
 
-A Django-based microservices project for demonstrating bulkhead, read, and write database patterns in a medical data context.
+**A Django-based microservices system implementing bulkhead isolation and read/write separation, deployed on Google Cloud Platform.**
 
-I developed this as part of the course "ISIS2503- Arquitectura y diseño de software" (Software architecture and design) at Universidad de los Andes.
+Developed as part of *ISIS2503 – Arquitectura y diseño de software* at Universidad de los Andes, this project explores scalable service architecture through a distributed, cloud-deployed medical records system.
 
-A video (in Spanish) showcasing the project can be watched through this link: https://youtu.be/RImE-6kuCwk
+[📽️ Watch the project demo (Spanish)](https://youtu.be/RImE-6kuCwk)
 
-## Project Structure
+---
 
-- `bulkhead/`: Bulkhead service for routing and service availability control.
-- `database/`: Read and write database microservices.
-- `ExpMantenibilidad2/`: Django project configuration.
-- `populate_db.py`: Script to populate databases with sample medical data.
-- `deployment.yaml`: Example GCP VM and firewall deployment configuration.
-- `requirements.txt`: Python dependencies.
+## ✨ Overview
 
-## Setup
+This system consists of loosely coupled Django services that reflect common real-world architectural patterns for resilience and scalability:
 
-### Prerequisites
+* **Bulkhead Isolation** – Failures in one service don’t propagate across the system.
+* **Read/Write Separation** – Optimized performance and data access through independent services and databases.
+* **Cloud Deployment** – Services deployed on GCP with startup automation and role-based configuration.
 
-- Python 3.8+
-- pip
-- (Optional) Google Cloud SDK for deployment
+Though designed as an academic experiment, the project emulates production-like environments with role-based microservices, independent deployment pipelines, and flexible runtime control over service behavior.
 
-### Installation
+---
 
-1. Clone the repository:
-    ```sh
-    git clone https://github.com/danteboe/ExpMantenibilidad2.git
-    cd ExpMantenibilidad2
-    ```
+## 🧩 Architecture
 
-2. Install dependencies:
-    ```sh
-    pip install -r requirements.txt
-    ```
+The system is composed of three main services, each running on its own GCP VM and configured independently via environment variables:
 
-3. Set environment variables as needed:
-    - `SERVER_TYPE`: `bulkhead`, `write`, or `read`
-    - `DJANGO_SECRET_KEY`: Your Django secret key
-    - `DEBUG`: `True` or `False`
-    - `WRITE_DB_IP` and `READ_DB_IP` (for bulkhead server)
+| Role       | Description                                                             |
+| ---------- | ----------------------------------------------------------------------- |
+| `bulkhead` | Routes requests and controls GET/POST availability via runtime toggles. |
+| `write`    | Accepts and stores new medical entries.                                 |
+| `read`     | Serves paginated and filtered medical records to clients.               |
 
-4. Run migrations:
-    ```sh
-    python manage.py makemigrations
-    python manage.py migrate
-    ```
+Each service exposes REST endpoints, health checks, and is initialized with pre-loaded medical data for demonstration.
 
-5. Populate the database:
-    ```sh
-    python populate_db.py
-    ```
+**Example Endpoints:**
 
-6. Start the server:
-    ```sh
-    python manage.py runserver 0.0.0.0:8000
-    ```
+* `POST /bulkhead/toggle/` – Control read/write access dynamically.
+* `GET /database/read/` – Query medical data (on read servers).
+* `POST /database/write/` – Add entries (on write servers).
 
-## Services
+---
 
-### Bulkhead Service
+## 🛠 Tech Stack
 
-- **Endpoint:** `/bulkhead/`
-- **Routes requests** to the appropriate read/write database service.
-- **Service control:**  
-    - `/bulkhead/toggle/` (POST): Toggle GET/POST service availability.
-    - `/bulkhead/status/` (GET): Check current GET/POST service status.
+* **Django 4.2** + **Django REST Framework** – Rapid API development with strong modularity.
+* **Python 3.8+**
+* **Google Cloud Platform**
 
-### Database Service
+  * Compute Engine VMs per service
+  * Firewall configuration and startup scripts
+* **Linux (Debian 11)**
+* **Git** – Version control and collaboration
 
-- **Endpoint:** `/database/`
-- **Write:** `/database/write/` (POST)  
-    - Only available on write servers.
-    - Request body: `{ "title": "...", "content": "..." }`
-- **Read:** `/database/read/` (GET)  
-    - Only available on read servers.
-    - Query params: `id`, `page`, `page_size`
-- **Health:** `/database/health/` (GET)
+---
 
-## Deployment
+## 🗂 Project Structure
 
-See [deployment.yaml](deployment.yaml) for an example of deploying three VMs (bulkhead, write, read) on Google Cloud Platform.
+```
+ExpMantenibilidad2/
+├── bulkhead/               # Routing and availability logic
+├── database/               # Read/write microservices
+├── deployment.yaml         # GCP deployment spec
+├── populate_db.py          # Sample data generator
+├── requirements.txt
+└── ...
+```
 
-## Models
+---
 
-- [`database.models.WriteData`](database/models.py): Write-side data model.
-- [`database.models.ReadData`](database/models.py): Read-side data model.
-- [`bulkhead.models.ServiceStatus`](bulkhead/models.py): Service availability status.
+## 🚀 Cloud Deployment
 
-## Populating Data
+Each service VM is provisioned using a declarative `deployment.yaml` file. Startup scripts:
 
-Run [`populate_db.py`](populate_db.py) to generate sample medical records or initialize service status, depending on `SERVER_TYPE`.
+* Install dependencies
+* Clone the repo
+* Set environment variables (`SERVER_TYPE`, `WRITE_DB_IP`, `READ_DB_IP`)
+* Run migrations and seed sample data
+* Start the Django server
 
-## Testing
+This setup supports reproducible deployments, modular development, and fault-isolated service upgrades.
 
-Run Django tests with:
-```sh
+---
+
+## 🧪 Local Testing (Optional)
+
+While the system was designed for a cloud environment, it can also be run locally:
+
+```bash
+pip install -r requirements.txt
+export SERVER_TYPE=write  # or read / bulkhead
+python manage.py migrate
+python populate_db.py
+python manage.py runserver
+```
+
+---
+
+## 📦 Models
+
+* `WriteData` / `ReadData`: Distinct models for logical data separation
+* `ServiceStatus`: Runtime service toggling metadata for bulkhead control
+
+---
+
+## 🧪 Tests
+
+```bash
 python manage.py test
 ```
 
+---
+
+## 🎯 Final Notes
+
+This project is a practical demonstration of scalable service design, deployment automation, and runtime flexibility using Python and cloud-native tools. While simple in scope, the architectural decisions reflect principles found in production systems—emphasizing separation of concerns, failure containment, and adaptable infrastructure.
+
+---
+
+Let me know if you'd like a version in Spanish or one tailored more toward a portfolio website layout.
