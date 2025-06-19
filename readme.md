@@ -1,4 +1,12 @@
-# ExpMantenibilidad2
+
+# 🧱 ExpMantenibilidad2
+
+![Django](https://img.shields.io/badge/Django-4.2-success?logo=django)
+![Python](https://img.shields.io/badge/Python-3.8+-blue?logo=python)
+![REST API](https://img.shields.io/badge/API-REST%20Framework-green)
+![Cloud](https://img.shields.io/badge/Deployed%20on-GCP-blue?logo=googlecloud)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Status](https://img.shields.io/badge/Status-Completed-brightgreen)
 
 **A Django-based microservices system implementing bulkhead isolation and read/write separation, deployed on Google Cloud Platform.**
 
@@ -45,7 +53,6 @@ Each service exposes REST endpoints, health checks, and is initialized with pre-
 * **Django 4.2** + **Django REST Framework** – Rapid API development with strong modularity.
 * **Python 3.8+**
 * **Google Cloud Platform**
-
   * Compute Engine VMs per service
   * Firewall configuration and startup scripts
 * **Linux (Debian 11)**
@@ -56,13 +63,15 @@ Each service exposes REST endpoints, health checks, and is initialized with pre-
 ## 🗂 Project Structure
 
 ```
+
 ExpMantenibilidad2/
 ├── bulkhead/               # Routing and availability logic
 ├── database/               # Read/write microservices
 ├── deployment.yaml         # GCP deployment spec
-├── populate_db.py          # Sample data generator
+├── populate\_db.py          # Sample data generator
 ├── requirements.txt
 └── ...
+
 ```
 
 ---
@@ -91,7 +100,3 @@ This setup supports reproducible deployments, modular development, and fault-iso
 ## 🎯 Final Notes
 
 This project is a practical demonstration of scalable service design, deployment automation, and runtime flexibility using Python and cloud-native tools. While simple in scope, the architectural decisions reflect principles found in production systems—emphasizing separation of concerns, failure containment, and adaptable infrastructure.
-
----
-
-Let me know if you'd like a version in Spanish or one tailored more toward a portfolio website layout.
